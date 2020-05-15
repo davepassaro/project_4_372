@@ -11,6 +11,7 @@ import select
 import binascii
 import random
 import string
+import codecs
 ICMP_ECHO_REQUEST = 8
 MAX_HOPS = 30
 TIMEOUT  = 2.0
@@ -42,22 +43,51 @@ def build_packet(data_size):
 	# First, make the header of the packet, then append the checksum to the header,
 	# then finally append the data
 
-	# Donâ€™t send the packet yet, just return the final packet in this function.
+	# dont send the packet yet, just return the final packet in this function.
 	# So the function ending should look like this
 	# Note: padding = bytes(data_size)
+	########################################
 	ICMP_ECHO = 8
-	id = random.randrange(0,200)
+	code = 0
+	p_id = random.randrange(0,200)
 	seqNum = random.randrange(0,200)
+	checkSum = 1
+	#header = str(ICMP_ECHO)+str(code)+str(checkSum)+str(p_id)+str(seqNum)
+	#print(header)
+	#print(p_id, '   ',seqNum,'\n')
+	#   cited   https://stackoverflow.com/questions/34614893/how-is-an-icmp-packet-constructed-in-python
+	header = struct.pack("!BBHHH", ICMP_ECHO, 0, checkSum,p_id, seqNum)
+	print(ICMP_ECHO, 0, checkSum,p_id, seqNum,'     expected values')
+	#hexH= binascii.hexlify(header).hex()
+	#print(hexH,"hexh")
+	#print((binascii.hexlify(header),),'binasci hexlify')
+	#de =header.decode('latin-1')
+	#de += 'hi'
+	#print((de),de.encode('latin-1'), header.decode('latin-1'),"decode")
+	#h_str = binascii.hexlify(header)
+	#print("".join("{:02X}".format(ord(x)) for x in header),"format ord")
+	#  cited https://pythontips.com/2013/07/28/generating-a-random-string/
+	#https://stackoverflow.com/questions/10880813/typeerror-sequence-item-0-expected-string-int-found
+	values = ''.join(chr(v) for v in header)
+	print(values, '   values')
+	data = ''.join([random.choice(string.ascii_letters) for n in range(data_size)])
+	print(data)
+	#data = data.encode("latin-1").hex()
+	#print(data,"    hexed data")
+	padding =str(data_size)
+	#padding = binascii.b2a_hex(data_size)
 
-	#cited   https://stackoverflow.com/questions/34614893/how-is-an-icmp-packet-constructed-in-python
-	header = struct.pack(
-        "!BBHHH", ICMP_ECHO, 0, checksum,id, seqNum
-    )
-	#cited https://pythontips.com/2013/07/28/generating-a-random-string/
-	#could have easily made this on my own but I think I understand it well enough to use it
-	padding = bytes( ''.join([random.choice(string.ascii_letters) for n in xrange(data_size)]))
-	packet = header + data + padding
-	return packet
+	packet = values + data + padding
+	print(packet,"pack x")
+	#packet_S = packet.decode('hex')
+	print(packet,"     strpck")
+	rtnCS = checksum(packet)
+	print(rtnCS)
+	#https: // stackoverflow.com / questions / 55218931 / calculating - checksum -for -icmp - echo - request - in -python
+	header1 = struct.pack("!BBHHH", ICMP_ECHO, 0, socket.htons(rtnCS), p_id, seqNum)
+	packet1 = values + data.encode("latin-1").hex() + bytes(data_size)
+
+	return packet1
 
 def get_route(hostname,data_size):
 	timeLeft = TIMEOUT
@@ -69,6 +99,9 @@ def get_route(hostname,data_size):
 			# SOCK_RAW is a powerful socket type. For more details:   http://sock-raw.org/papers/sock_raw
 			#Fill in start
 			# Make a raw socket named mySocket
+			icmp = socket.getprotobyname("icmp")
+			mySocket = socket.socket(socket.AF_INET, socket.SOCK_RAW, icmp)
+			#cited https: // www.programcreek.com / python / example / 7887 / socket.SOCK_RAW
 			#Fill in end
 
 			# setsockopt method is used to set the time-to-live field.
@@ -95,6 +128,7 @@ def get_route(hostname,data_size):
 			else:
 				#Fill in start
 				#Fetch the icmp type from the IP packet
+
 				#Fill in end
 
 				if types == 11:
@@ -122,9 +156,10 @@ def get_route(hostname,data_size):
 
 print('Argument List: {0}'.format(str(sys.argv)))
 
-data_size = 0
+#data_size = 0
 if len(sys.argv) >= 2:
 	data_size = int(sys.argv[1])
-
-get_route("oregonstate.edu",data_size)
+data_size=4
+#get_route("oregonstate.edu",data_size)
+build_packet(data_size)
 #get_route("gaia.cs.umass.edu",data_size)
