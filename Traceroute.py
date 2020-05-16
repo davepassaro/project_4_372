@@ -23,13 +23,13 @@ def checksum(string):
 
 	count = 0
 	while count < countTo:
-		thisVal = ord(string[count+1]) * 256 + ord(string[count])
+		thisVal = (string[count+1]) * 256 + (string[count])
 		csum = csum + thisVal
 		csum = csum & 0xffffffff
 		count = count + 2
 
 	if countTo < len(string):
-		csum = csum + ord(string[len(string) - 1])
+		csum = csum + (string[len(string) - 1])
 		csum = csum & 0xffffffff
 
 	csum = (csum >> 16) + (csum & 0xffff)
@@ -47,16 +47,15 @@ def build_packet(data_size):
 	# So the function ending should look like this
 	# Note: padding = bytes(data_size)
 	########################################
-	ICMP_ECHO = 8
+	icmp_echo_num = 8
 	code = 0
 	packetId = 1#random.randrange(0,200)
-	seqNum = 9#random.randrange(0,200)
+	seqNum = 1#random.randrange(0,200)
 	checkSum = 1
 	#header = str(ICMP_ECHO)+str(code)+str(checkSum)+str(p_id)+str(seqNum)
 	#print(header)
 	#print(p_id, '   ',seqNum,'\n')
 	#   cited   https://stackoverflow.com/questions/34614893/how-is-an-icmp-packet-constructed-in-python
-	header = struct.pack("!BBHHh", ICMP_ECHO, 0, checkSum,packetId, seqNum)
 	#print(ICMP_ECHO, 0, checkSum,packetId, seqNum,'     expected values')
 	#hexH= binascii.hexlify(header).hex()
 	#print(hexH,"hexh")
@@ -68,28 +67,38 @@ def build_packet(data_size):
 	#print("".join("{:02X}".format(ord(x)) for x in header),"format ord")
 	#  cited https://pythontips.com/2013/07/28/generating-a-random-string/
 	#https://stackoverflow.com/questions/10880813/typeerror-sequence-item-0-expected-string-int-found
-	values = ''.join(chr(v) for v in header)
+	#values = ''.join(chr(v) for v in header)
 	#print(values, '   values')
-	data = ''.join([random.choice(string.ascii_letters) for n in range(data_size)])
+	#data = ''.join([random.choice(string.ascii_letters) for n in range(data_size)])
+
 	#print(data)
 	#data = data.encode("latin-1").hex()
 	#print(data,"    hexed data")
 	padding =str(data_size)
 	#padding = binascii.b2a_hex(data_size)
-
-	packet = values + data #+ padding
-	print("pack = ",packet)
+	#dataB = struct.pack("s", data.encode())
+	#packet = header+dataB #+ data #+ padding
+	#print("pack = ",packet)
 	#packet_S = packet.decode('hex')
 	#print(packet,"     strpck")
-	rtnCS = checksum(packet)
-	print(rtnCS)
+	header = struct.pack("bbHHh", icmp_echo_num, 0, checkSum,packetId, 1)
+	data = struct.pack("d", 9)
+	data1 = data.decode('ISO-8859-1')
+	header1 = header.decode('ISO-8859-1')
+	#decoded = (header + data).decode('ISO-8859-1')
+	checkSum = checksum(header + data)
+
+	print(checkSum)
 	#  https: // stackoverflow.com / questions / 55218931 / calculating - checksum -for -icmp - echo - request - in -python
 	#  https: // piazza.com /class /k892xt0vqjs3x5?cid=254 ---htons()
-	data = data.encode()
-	header1 = struct.pack("!BBHHH", ICMP_ECHO, 0, socket.htons(rtnCS), packetId, seqNum)
-	packet1 = header1 #+ data  +bytes(data_size)
+	#data = data.encode()
+
+	checkSum = socket.htons(checkSum) + 1
+	header = struct.pack("bbHHh", icmp_echo_num, 0, checkSum, packetId, 1)
+
+	packet = header + data#+ data.encode()#  +bytes(data_size)
 	#print(packet1)
-	return packet1
+	return packet
 
 def get_route(hostname,data_size):
 	timeLeft = TIMEOUT
@@ -102,7 +111,7 @@ def get_route(hostname,data_size):
 			#Fill in start
 			# Make a raw socket named mySocket
 			mySocket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.getprotobyname("icmp"))
-			#cited https: // www.programcreek.com / python / example / 7887 / socket.SOCK_RAW
+			#cited https: // www.programcreek.com / python / example / 7887 / socket.SOCK_RAW --ex 4
 			#Fill in end
 
 			# setsockopt method is used to set the time-to-live field.
