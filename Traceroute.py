@@ -1,6 +1,11 @@
 
+
 # Adapted from companion material available for the textbook Computer Networking: A Top-Down Approach, 6th Edition
 # Kurose & Ross Â©2013
+#David Passaro
+#passarod@oregonstate.edu
+#372-400 SPRING
+#Project 3 Traceroute
 
 import socket
 import os
@@ -49,55 +54,29 @@ def build_packet(data_size):
 	########################################
 	icmp_echo_num = 8
 	code = 0
-	packetId = 1#random.randrange(0,200)
-	seqNum = 1#random.randrange(0,200)
+	packetId = 1  #given randomly here
+	seqNum = 1
 	checkSum = 1
-	#header = str(ICMP_ECHO)+str(code)+str(checkSum)+str(p_id)+str(seqNum)
-	#print(header)
-	#print(p_id, '   ',seqNum,'\n')
 	#   cited   https://stackoverflow.com/questions/34614893/how-is-an-icmp-packet-constructed-in-python
-	#print(ICMP_ECHO, 0, checkSum,packetId, seqNum,'     expected values')
-	#hexH= binascii.hexlify(header).hex()
-	#print(hexH,"hexh")
-	#print((binascii.hexlify(header),),'binasci hexlify')
-	#de =header.decode('latin-1')
-	#de += 'hi'
-	#print((de),de.encode('latin-1'), header.decode('latin-1'),"decode")
-	#h_str = binascii.hexlify(header)
-	#print("".join("{:02X}".format(ord(x)) for x in header),"format ord")
 	#  cited https://pythontips.com/2013/07/28/generating-a-random-string/
 	#https://stackoverflow.com/questions/10880813/typeerror-sequence-item-0-expected-string-int-found
-	#values = ''.join(chr(v) for v in header)
-	#print(values, '   values')
-	#data = ''.join([random.choice(string.ascii_letters) for n in range(data_size)])
 
-	#print(data)
-	#data = data.encode("latin-1").hex()
-	#print(data,"    hexed data")
-	padding =str(data_size)
-	#padding = binascii.b2a_hex(data_size)
-	#dataB = struct.pack("s", data.encode())
-	#packet = header+dataB #+ data #+ padding
-	#print("pack = ",packet)
-	#packet_S = packet.decode('hex')
-	#print(packet,"     strpck")
-	header = struct.pack("bbHHh", icmp_echo_num, 0, checkSum,packetId, 1)
-	data = struct.pack("d", 9)
-	data1 = data.decode('ISO-8859-1')
-	header1 = header.decode('ISO-8859-1')
-	#decoded = (header + data).decode('ISO-8859-1')
-	checkSum = checksum(header + data)
-
-	print(checkSum)
+	#https://stackoverflow.com/questions/34614893/how-is-an-icmp-packet-constructed-in-python
+	chars = []
+	begin = 0x41
+	size = 10
+	for i in range(begin, begin + (data_size)):  # here we fill the chars into the list for the package
+		chars += [(i & 0xff)]
+	data = bytes(chars)  # turn to bytes for the checksum
+	header = struct.pack("!bbHHh", icmp_echo_num, 0, checkSum,packetId, 1) #struct pack for getting the bytes in specific order
+	checkSum = checksum(header + data) #check the sum
 	#  https: // stackoverflow.com / questions / 55218931 / calculating - checksum -for -icmp - echo - request - in -python
 	#  https: // piazza.com /class /k892xt0vqjs3x5?cid=254 ---htons()
-	#data = data.encode()
 
-	checkSum = socket.htons(checkSum) + 1
-	header = struct.pack("bbHHh", icmp_echo_num, 0, checkSum, packetId, 1)
+	checkSum = socket.htons(checkSum) + 1 # had to inc as I saw it was off by one in wireshark
+	header = struct.pack("!bbHHh", icmp_echo_num, 0, checkSum, packetId, 1) # repack with the new checksum
 
-	packet = header + data#+ data.encode()#  +bytes(data_size)
-	#print(packet1)
+	packet = header + data
 	return packet
 
 def get_route(hostname,data_size):
@@ -111,6 +90,7 @@ def get_route(hostname,data_size):
 			#Fill in start
 			# Make a raw socket named mySocket
 			mySocket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.getprotobyname("icmp"))
+			# set up socket  with the protocol
 			#cited https: // www.programcreek.com / python / example / 7887 / socket.SOCK_RAW --ex 4
 			#Fill in end
 
@@ -138,10 +118,12 @@ def get_route(hostname,data_size):
 			else:
 				#Fill in start
 				#Fetch the icmp type from the IP packet
-				# https://piazza.com/class/k892xt0vqjs3x5?cid=264----- 20-28 gets the icmp header information
+				# https://piazza.com/class/k892xt0vqjs3x5?cid=264----- 20-28 gets the icmp header information (starts at
+				# 160B
 				icmpHeaderInfo = recvPacket[20:28]
-				types, code, checksum, packetID, sequence = struct.unpack("bbHHh", icmpHeaderInfo)
-				#Fill in end
+				types, code, checksum, packetID, sequence = struct.unpack("bbHHh", icmpHeaderInfo)  # unload into the
+				# variables in proper order
+				# Fill in end
 
 				if types == 11:
 					bytes = struct.calcsize("d")
@@ -157,6 +139,7 @@ def get_route(hostname,data_size):
 					bytes = struct.calcsize("d")
 					timeSent = struct.unpack("d", recvPacket[28:28 + bytes])[0]
 					print("  %d    rtt=%.0f ms    %s" %(ttl, (timeReceived - t)*1000, addr[0]))
+					print('types = ', types)
 					return
 
 				else:
@@ -171,9 +154,16 @@ print('Argument List: {0}'.format(str(sys.argv)))
 data_size = 0
 if len(sys.argv) >= 2:
 	data_size = int(sys.argv[1])
-#data_size=0
-print(data_size)
-#get_route("oregonstate.edu",data_size)
+else:
+	data_size = 10
+
+print("OSU")
+get_route("www.oregonstate.edu",data_size)
+print("CHINA")
+get_route('www.china.org.cn', data_size)
+print("GOOGLE")
 get_route("www.google.com", data_size)
-#build_packet(data_size)
+print("SWEDEN")
+get_route('www.sweden.se', data_size)
+
 #get_route("gaia.cs.umass.edu",data_size)
